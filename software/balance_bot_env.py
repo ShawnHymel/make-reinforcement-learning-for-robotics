@@ -225,6 +225,8 @@ class BalanceBotEnv(gym.Env):
 
         # Initialize the viewer
         self._viewer = None
+        self._renderer = None
+        self._cam = None
 
         # Internal step counter
         self._step = 0
@@ -265,6 +267,14 @@ class BalanceBotEnv(gym.Env):
                 obs[3] += self.np_random.normal(0.0, self.dr.wheel_vel_noise_std_dev)
 
         return obs
+
+    def _setup_camera(self, cam):
+        """Apply the default camera angle used by both render modes."""
+        cam.type = mujoco.mjtCamera.mjCAMERA_FREE
+        cam.lookat[:] = [0, 0, 0.05]
+        cam.distance  = 0.8
+        cam.azimuth = 45
+        cam.elevation = -25
 
     def reset(self, seed=None, options=None):
         """
@@ -446,24 +456,39 @@ class BalanceBotEnv(gym.Env):
 
     def render(self):
         """
-        Render the current simulation state to the MuJoCo viewer window.
+        Render the current simulation state.
+            "rgb_array": return an (H, W, 3) uint8 image, rendered off-screen (no window needed)
+            "human": draw to the MuJoCo viewer window
         """
-        if self.render_mode != "human":
-            return
+        if self.render_mode == "rgb_array":
+            # Create the off-screen renderer and camera on the first render call
+            if self._renderer is None:
+                self._renderer = mujoco.Renderer(self.model, height=480, width=640)
+                self._cam = mujoco.MjvCamera()
+                self._setup_camera(self._cam)
 
-        # Create the viewer on the first render call
-        if self._viewer is None:
-            self._viewer = mujoco.viewer.launch_passive(self.model, self.data)
+            # Follow the chassis so the robot stays in frame if it drifts
+            self._cam.lookat[:2] = self.data.xpos[self._chassis_id][:2]
 
-            # Set up the camera
-            self._viewer.cam.type     = mujoco.mjtCamera.mjCAMERA_FREE
-            self._viewer.cam.lookat[:] = [0, 0, 0.05]
-            self._viewer.cam.distance  = 0.8
-            self._viewer.cam.azimuth   = 45
-            self._viewer.cam.elevation = -25
+            # Draw the scene and return the image
+            self._renderer.update_scene(self.data, camera=self._cam)
+            return self._renderer.render()
 
-        # Push the current simulation state to the viewer
-        self._viewer.sync()
+        elif self.render_mode == "human":
+            # Import the viewer only when needed, so headless setups never touch it
+            from mujoco import viewer as mj_viewer
+
+            # Create the viewer window on the first render call
+            if self._viewer is None:
+                self._viewer = mj_viewer.launch_passive(self.model, self.data)
+                self._setup_camera(self._viewer.cam)
+
+            # Push the current simulation state to the viewer
+            self._viewer.sync()
+            return None
+
+        else:
+            return None
 
     def close(self):
         """
