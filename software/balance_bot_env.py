@@ -91,9 +91,10 @@ class BalanceBotEnv(gym.Env):
         right_wheel_joint="right_wheel_joint",
         alive_bonus=1.0, 
         pitch_penalty_coef=5.0, 
-        action_penalty_coef=0.01,
-        position_penalty_coef=0.01,
-        yaw_penalty_coef=0.1,
+        action_penalty_coef=0.0,
+        position_penalty_coef=0.0,
+        speed_penalty_coef=0.0,
+        yaw_penalty_coef=0.0,
         tip_threshold_deg=30.0,
         domain_rand=None,
     ):
@@ -118,6 +119,8 @@ class BalanceBotEnv(gym.Env):
             action_penalty_coef (float): Scales the action^2 penalty, discourage jittery motion
             position_penalty_coef (float): Scales the position penalty (x^2 + y^2), discourages
                                            drifting from the starting position
+            speed_penalty_coef (float): Scales the speed penalty, discouranges the robot moving
+                                        from the starting position
             yaw_penalty_coef (float): Scales the abs(yaw_rate) penalty, discourages spinning around
                                       the Z axis
             tip_threshold_deg (float): Angle (degrees) in which the robot is considered tipped
@@ -205,6 +208,7 @@ class BalanceBotEnv(gym.Env):
         self.pitch_penalty_coef = pitch_penalty_coef
         self.action_penalty_coef = action_penalty_coef
         self.position_penalty_coef = position_penalty_coef
+        self.speed_penalty_coef = speed_penalty_coef
         self.yaw_penalty_coef = yaw_penalty_coef
 
         # Save tip threshold
@@ -432,21 +436,33 @@ class BalanceBotEnv(gym.Env):
         obs = self._get_obs()
         pitch = obs[0]
 
-        # Reward function: alive - (A*pitch^2) - (B*action^2) - (C*(x^2 + y^2)) - D*abs(yaw)
-        # Note: qpos (simulation state) only available during training
+        # Get the position of the robot in the world frame (privileged information)
+        x_pos = self.data.qpos[0]
+        y_pos = self.data.qpos[1]
+
+        # Get the speed of the robot in the world frame (privileged information)
+        x_vel = self.data.qvel[0]
+        y_vel = self.data.qvel[1]
+
+        # Get the turning speed of the robot in the world frame (privileged information)
+        yaw_rate = self.data.qvel[5]
+
+        # Compute the penalties
         #   alive: reward for staying upright each step
         #   pitch: penalty for leaning
         #   action: penalty for jittery motor commands
         #   position: penalty for drifting from the starting position
+        #   speed: penalty for drifting
         #   yaw: penalty for rotating around Z axis
         pitch_penalty = self.pitch_penalty_coef * pitch**2
         action_penalty = self.action_penalty_coef * np.sum(action**2)
-        x_pos = self.data.qpos[0]
-        y_pos = self.data.qpos[1]
         position_penalty = self.position_penalty_coef * (x_pos**2 + y_pos**2)
-        yaw_rate = self.data.qvel[5]
+        speed_penalty = self.speed_penalty_coef * (x_vel**2 + y_vel**2)
         yaw_penalty = self.yaw_penalty_coef * abs(yaw_rate)
-        reward = self.alive_bonus - pitch_penalty - action_penalty - position_penalty - yaw_penalty
+
+        # Reward function: subtract penalties from the alive bonus
+        reward = self.alive_bonus - pitch_penalty - action_penalty - position_penalty - \
+            speed_penalty - yaw_penalty
 
         # Termination (if robot tips or we run out of time in the episode)
         terminated = abs(pitch) > math.radians(self.tip_threshold_deg)
@@ -498,3 +514,6 @@ class BalanceBotEnv(gym.Env):
         if self._viewer is not None:
             self._viewer.close()
             self._viewer = None
+        if self._renderer is not None:
+            self._renderer.close()
+            self._renderer = None

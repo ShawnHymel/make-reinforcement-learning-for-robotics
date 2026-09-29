@@ -28,6 +28,7 @@ Changes:
 # Import standard libraries
 import os
 import random
+import sys
 import time
 from dataclasses import dataclass
 from collections import deque
@@ -571,7 +572,11 @@ def train(config: PPOConfig, envs=None, agent=None):
     # Assign a name for the run
     run_name = f"{config.env_id}__{config.exp_name}__{config.seed}__{int(time.time())}"
     print(f"Run name: {run_name}")
-    print(f"TensorBoard: http://localhost:6006/#scalars&regexFilter={config.exp_name}")
+    if "google.colab" in sys.modules:
+        print("TensorBoard: see the TensorBoard panel in the cell above "
+            "(click refresh to update)")
+    else:
+        print(f"TensorBoard: http://localhost:6006/#scalars&regexFilter={config.exp_name}")
 
     # Ensure that if a vector of custom environments is passed in, the num_envs parameter reflects
     # that number
