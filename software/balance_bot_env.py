@@ -90,7 +90,7 @@ class BalanceBotEnv(gym.Env):
         left_wheel_joint="left_wheel_joint",
         right_wheel_joint="right_wheel_joint",
         alive_bonus=1.0, 
-        pitch_penalty_coef=5.0, 
+        pitch_penalty_coef=0.5, 
         action_penalty_coef=0.0,
         position_penalty_coef=0.0,
         speed_penalty_coef=0.0,
