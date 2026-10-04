@@ -2,54 +2,32 @@
 
 This repository accompanies the Make: Magazine article covering reinforcement learning (RL) for robotics.
 
-> NOTE: all of the CLI commands are given for Debian-based Linux (e.g. Ubuntu). You will need to convert them if you wish to run this demo on another operating system (such as macOS or Windows).
-
 ## Train the Agent
 
-Head to %%%LINK
+Navigate [here](https://colab.research.google.com/github/shawnhymel/make-reinforcement-learning-for-robotics/blob/main/software/make_rl_train_balance_bot.ipynb) to open the Google Colab notebook.
 
-In Google Colab, go to **Runtime > Change runtime type**. Under *Runtime version*, select **2026.07**. Click **Save**.l
+In Google Colab, go to **Runtime > Change runtime type**. Under *Runtime version*, select **2026.07**. Click **Save**. This allows us to use a standard version and pin the library versions (where possible).
 
+Press **shift+enter* to run all of the cells in order. Note that the actual training cells will take some time (about 15 minutes each). Feel free to check the TensorBoard and evaluation video outputs to make sure the robot is balancing.
 
+## Deploy the Agent
 
+Once training is done, open the file browser on the left side of the Colab window. Navigate to *make-reinforcement-learning-for-robotics/output* and download **actor.h**.
 
+Download this repository somewhere on your computer.
 
+Copy **actor.h** and paste it into your local copy of *make-reinforcement-learning-for-robotics/software/balance_bot_arduino*, overwriting the *actor.h* file found there. Open **balance_bot_arduino.ino** in the Arduino IDE.
 
+In *File > Preferences*, add the following URL into the *Additional board manager URLs* field:
 
-
-## Installation
-
-Make sure you have [Python 3.12+](https://www.python.org/) running on your system.
-
-Download this repository: either click **Code > Download ZIP** or run the following:
-
-```sh
-git clone https://github.com/ShawnHymel/make-reinforcement-learning-for-robotics
+```
+https://static-cdn.m5stack.com/resource/arduino/package_m5stack_index.json
 ```
 
-Navigate into the directory:
+Open the library manager and search for “M5Unified.” Install the M5Unified library.
 
-```sh
-cd make-reinforcement-learning-for-robotics
-```
+Upload the sketch to the M5Stack Bala2-Fire robot. Move the robot to a flat surface and watch it balance!
 
-Create a Python virtual environment and install the requried Python packages:
+## License
 
-```sh
-python -m venv rl-env
-source rl-env/bin/activate
-pip install -r requirements.txt
-```
-
-> NOTE: we are installing the CPU-only version of PyTorch in this project. The simple balance bot agent can be trained in about an hour using most modern CPUs, which means you don't need an expensive GPU or need to download the CUDA version of PyTorch (saving you several GB of hard drive space).
-
-## Train the Agent
-
-Run JupyterLab:
-
-```sh
-jupyter-lab
-```
-
-Open a web browser and navigate to `localhost:8888`. The page will ask you for a token. Copy the hexadecimal token from the command line output (e.g. you should see a URL printed out ` http://localhost:8888/lab?token=<TOKEN>`. Copy `<TOKEN>`).
-
+All software in this repository, unless otherwise noted, is licensed under the [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) license.
